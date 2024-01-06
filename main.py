@@ -9,8 +9,8 @@ import ctypes
 ctypes.windll.kernel32.SetConsoleTitleW("CHZZK VOD Downloader")
 
 class ChzzkStreamExtractor:
-    VOD_URL = "https://apis.naver.com/neonplayer/vodplay/v1/playback/{video_id}?key={in_key}"
-    VOD_INFO = "https://api.chzzk.naver.com/service/v1/videos/{video_no}"
+    VOD_URL = "https://apis.naver.com/neonplayer/vodplay/v2/playback/{video_id}?key={in_key}"
+    VOD_INFO = "https://api.chzzk.naver.com/service/v2/videos/{video_no}"
 
     @staticmethod
     def extract_streams(link):
