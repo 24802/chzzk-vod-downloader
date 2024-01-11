@@ -47,7 +47,7 @@ class ChzzkStreamExtractor:
             print("Download completed!\n")
 
         except requests.RequestException as e:
-            print("Failed to download video:", str(e))
+            print("Failed to download video:", str(e), "\n")
 
     @staticmethod
     def _print_dash_manifest(video_url):
@@ -69,9 +69,9 @@ class ChzzkStreamExtractor:
                 print("BaseURL not found in DASH manifest\n")
 
         except requests.RequestException as e:
-            print("Failed to fetch DASH manifest:", str(e))
+            print("Failed to fetch DASH manifest:", str(e), "\n")
         except ET.ParseError as e:
-            print("Failed to parse DASH manifest XML:", str(e))
+            print("Failed to parse DASH manifest XML:", str(e), "\n")
 
     @staticmethod
     def _get_vod_streams(session, video_no):
@@ -81,7 +81,7 @@ class ChzzkStreamExtractor:
             response = requests.get(api_url)
             response.raise_for_status()
         except requests.RequestException as e:
-            print("Failed to fetch video information:", str(e))
+            print("Failed to fetch video information:", str(e), "\n")
             return
 
         if response.status_code == 404:
@@ -92,14 +92,30 @@ class ChzzkStreamExtractor:
             content = response.json().get('content', {})
             video_id = content.get('videoId')
             in_key = content.get('inKey')
+
+            # Check if videoId and inKey are None
+            if video_id is None or in_key is None:
+
+                print("This is a need to login video.", "\n")
+                # Load NID_AUT and NID_SES from cookies.json file
+                cookies = ChzzkStreamExtractor._load_cookies_from_file("cookies.json")
+                if cookies is not None:
+                    # Retry the request with cookies
+                    response = requests.get(api_url, cookies=cookies)
+                    response.raise_for_status()
+
+                    # Update video_id and in_key with the new values
+                    content = response.json().get('content', {})
+                    video_id = content.get('videoId')
+                    in_key = content.get('inKey')
+
             video_url = ChzzkStreamExtractor.VOD_URL.format(video_id=video_id, in_key=in_key)
 
             author = content.get('channel', {}).get('channelName')
             category = content.get('videoCategory')
             title = content.get('videoTitle')
 
-
-            print(f"\nAuthor: {author}, Title: {title}, Category: {category}")
+            print(f"Author: {author}, Title: {title}, Category: {category}")
 
             # Print DASH manifest data
             base_url = ChzzkStreamExtractor._print_dash_manifest(video_url)
@@ -111,6 +127,19 @@ class ChzzkStreamExtractor:
 
         except json.JSONDecodeError as e:
             print("Failed to decode JSON response:", str(e))
+
+    @staticmethod
+    def _load_cookies_from_file(file_path):
+        try:
+            with open(file_path, 'r') as file:
+                cookies = json.load(file)
+            return cookies
+        except FileNotFoundError:
+            print(f"Cookie file not found: {file_path}", "\n")
+            return None
+        except json.JSONDecodeError:
+            print(f"Error decoding JSON from file: {file_path}", "\n")
+            return None
 
 if __name__ == "__main__":
     while True:
