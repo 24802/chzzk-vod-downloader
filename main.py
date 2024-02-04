@@ -122,7 +122,10 @@ class ChzzkStreamExtractor:
 
             # Ask user if they want to download the video
             if base_url:
+                title = ChzzkStreamExtractor.clean_filename(title)
+
                 output_path = f"{title}.mp4"
+
                 ChzzkStreamExtractor.download_video(base_url, output_path)
 
         except json.JSONDecodeError as e:
@@ -140,6 +143,12 @@ class ChzzkStreamExtractor:
         except json.JSONDecodeError:
             print(f"Error decoding JSON from file: {file_path}", "\n")
             return None
+    @staticmethod
+    def clean_filename(filename):
+    # 정규식을 사용하여 유효하지 않은 문자 제거
+        cleaned_filename = re.sub(r'[♥♡ღ⭐㉦✧》《♠♦❤️♣✿ꈍᴗ\/@!~*\[\]\#\$\%\^\&\(\)\-\_\=\+\<\>\?\;\:\'\"]', '', filename)
+        return cleaned_filename
+
 
 if __name__ == "__main__":
     while True:
