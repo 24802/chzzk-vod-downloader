@@ -34,7 +34,7 @@ class ChzzkStreamExtractor:
             response.raise_for_status()
 
             total_size = int(response.headers.get('content-length', 0))
-            block_size = 8192  # Adjust as needed
+            block_size = 8192
             progress_bar = tqdm(total=total_size, unit='B', unit_scale=True)
 
             with open(output_path, 'wb') as f:
@@ -55,14 +55,11 @@ class ChzzkStreamExtractor:
             response = requests.get(video_url, headers={"Accept": "application/dash+xml"})
             response.raise_for_status()
 
-            # Parse DASH manifest XML with namespaces
             root = ET.fromstring(response.text)
             ns = {"mpd": "urn:mpeg:dash:schema:mpd:2011", "nvod": "urn:naver:vod:2020"}
 
-            # Find BaseURL using find method with namespaces
             base_url_element = root.find(".//mpd:BaseURL", namespaces=ns)
 
-            # Print the BaseURL if found
             if base_url_element is not None:
                 return base_url_element.text
             else:
@@ -93,11 +90,9 @@ class ChzzkStreamExtractor:
             video_id = content.get('videoId')
             in_key = content.get('inKey')
 
-            # Check if videoId and inKey are None
             if video_id is None or in_key is None:
 
                 print("This is a need to login video.", "\n")
-                # Load NID_AUT and NID_SES from cookies.json file
                 cookies = ChzzkStreamExtractor._load_cookies_from_file("cookies.json")
                 if cookies is not None:
                     # Retry the request with cookies
@@ -117,10 +112,8 @@ class ChzzkStreamExtractor:
 
             print(f"Author: {author}, Title: {title}, Category: {category}")
 
-            # Print DASH manifest data
             base_url = ChzzkStreamExtractor._print_dash_manifest(video_url)
 
-            # Ask user if they want to download the video
             if base_url:
                 title = ChzzkStreamExtractor.clean_filename(title)
 
@@ -145,18 +138,15 @@ class ChzzkStreamExtractor:
             return None
     @staticmethod
     def clean_filename(filename):
-    # 정규식을 사용하여 유효하지 않은 문자 제거
         cleaned_filename = re.sub(r'[♥♡ღ⭐㉦✧》《♠♦❤️♣✿ꈍᴗ\/@!~*\[\]\#\$\%\^\&\(\)\-\_\=\+\<\>\?\;\:\'\"]', '', filename)
         return cleaned_filename
 
 
 if __name__ == "__main__":
     while True:
-        # Get the link from the user
         link = input("Enter the link (or type 'exit' to quit): ")
 
         if link.lower() == 'exit':
             break
 
-        # Extract streams from the link
         ChzzkStreamExtractor.extract_streams(link)
