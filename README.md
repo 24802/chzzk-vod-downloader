@@ -2,7 +2,7 @@
 
 치지직 VOD 다시보기 다운로드 프로그램
 
-터미널: https://github.com/24802/chzzk-vod-downloader/raw/master/dist/dist.zip  
-GUI: https://github.com/24802/chzzk-vod-downloader/raw/master/dist/gui.exe
+CMD(스레드 다운로드 지원): https://github.com/24802/chzzk-vod-downloader/raw/master/dist/dist.zip  
+GUI(스레드 다운로드 미지원): https://github.com/24802/chzzk-vod-downloader/raw/master/dist/gui.exe
 
 웹: https://chzzk-vod.streamlit.app
