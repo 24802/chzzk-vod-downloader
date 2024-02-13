@@ -3,7 +3,7 @@ import re
 import json
 import requests
 import xml.etree.ElementTree as ET
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLineEdit, QPushButton, QLabel, QProgressBar, QMessageBox, QLabel
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLineEdit, QPushButton, QLabel, QProgressBar, QMessageBox, QLabel, QHBoxLayout
 from PyQt5.QtCore import QThread, pyqtSignal, Qt, QUrl
 from PyQt5.QtGui import QDesktopServices
 from streamlink import Streamlink
@@ -51,7 +51,7 @@ class DownloadThread(QThread):
 
             self.stopped.emit() if self._is_stopped else self.completed.emit("다운로드 완료!")
         except requests.RequestException as e:
-            self.completed.emit(f"다운로드 실패: {e}")
+            self.completed.emit(f"다운로드 완료: {e}")
         except StopIteration:
             self.completed.emit("다운로드 완료!")
 
@@ -77,7 +77,7 @@ class ChzzkStreamExtractor:
         # Match the link to extract necessary information
         match = re.match(r'https?://chzzk\.naver\.com/(?:video/(?P<video_no>\d+)|live/(?P<channel_id>[^/?]+))$', link)
         if not match:
-            print("Invalid link\n")
+            QMessageBox.critical(None, "Error", "유효한 비디오 링크가 아닙니다.")
             return
 
         video_no = match.group("video_no")
@@ -102,10 +102,10 @@ class ChzzkStreamExtractor:
                         progress_bar.update(len(chunk))
 
             progress_bar.close()  # Close tqdm when done
-            print("Download completed!\n")
+            QMessageBox.information(None, "Information", "다운로드 완료!")
 
         except requests.RequestException as e:
-            print("Failed to download video:", str(e), "\n")
+            QMessageBox.critical(None, "Error", f"다운로드 실패: {e}")
 
     @staticmethod
     def _print_dash_manifest(video_url):
@@ -121,12 +121,12 @@ class ChzzkStreamExtractor:
             if base_url_element is not None:
                 return base_url_element.text
             else:
-                print("BaseURL not found in DASH manifest\n")
+                QMessageBox.critical(None, "Error", "DASH 매니페스트에서 BaseURL을 찾을 수 없습니다.")
 
         except requests.RequestException as e:
-            print("Failed to fetch DASH manifest:", str(e), "\n")
+            QMessageBox.critical(None, "Error", f"DASH 매니페스트를 가져오는데 실패했습니다:\n{e}")
         except ET.ParseError as e:
-            print("Failed to parse DASH manifest XML:", str(e), "\n")
+            QMessageBox.critical(None, "Error", f"DASH 매니페스트 XML 파싱에 실패했습니다:\n{e}")
 
     @staticmethod
     def _get_vod_streams(session, video_no, cookies):
@@ -136,11 +136,11 @@ class ChzzkStreamExtractor:
             response = requests.get(api_url)
             response.raise_for_status()
         except requests.RequestException as e:
-            print("Failed to fetch video information:", str(e), "\n")
+            QMessageBox.critical(None, "Error", f"비디오 정보를 가져오는데 실패했습니다:\n{e}")
             return
 
         if response.status_code == 404:
-            print("Video not found\n")
+            QMessageBox.critical(None, "Error", "비디오 정보를 찾을 수 없습니다.")
             return
 
         try:
@@ -163,8 +163,6 @@ class ChzzkStreamExtractor:
             category = content.get('videoCategory')
             title = content.get('videoTitle')
 
-            print(f"Author: {author}, Title: {title}, Category: {category}")
-
             base_url = ChzzkStreamExtractor._print_dash_manifest(video_url)
 
             if base_url:
@@ -173,7 +171,7 @@ class ChzzkStreamExtractor:
                 return base_url, output_path, author, title, category
 
         except json.JSONDecodeError as e:
-            print("Failed to decode JSON response:", str(e))
+            QMessageBox.critical(None, "Error", f"비디오 정보 JSON 디코딩에 실패했습니다:\n{e}")
         return None, None, None, None, None
 
     @staticmethod
@@ -183,10 +181,10 @@ class ChzzkStreamExtractor:
                 cookies = json.load(file)
             return cookies
         except FileNotFoundError:
-            print(f"Cookie file not found: {file_path}", "\n")
+            QMessageBox.critical(None, "Error", f"쿠키 파일을 찾을 수 없습니다: {file_path}")
             return None
         except json.JSONDecodeError:
-            print(f"Error decoding JSON from file: {file_path}", "\n")
+            QMessageBox.critical(None, "Error", f"쿠키 파일을 디코딩하는데 실패했습니다: {file_path}")
             return None
     @staticmethod
     def clean_filename(filename):
@@ -238,16 +236,37 @@ class App(QWidget):
         self.progressBar = QProgressBar(self)
         layout.addWidget(self.progressBar)
 
-        self.discordLink = QLabel('<a href="https://discord.com/users/245702966085025802">Discord</a>', self)
-        self.discordLink.setOpenExternalLinks(True)  # 외부 링크 열기 활성화
-        self.discordLink.setAlignment(Qt.AlignRight | Qt.AlignBottom)  # 우측 하단 정렬
-        layout.addWidget(self.discordLink)
+        linksLayout = QHBoxLayout()
 
-        self.setLayout(layout)
+        # 사용법 링크 라벨 설정
+        self.usageLink = QLabel('<a href="usage">사용법</a>', self)
+        self.usageLink.setOpenExternalLinks(False)
+        self.usageLink.linkActivated.connect(self.showReadMe)
+
+        # Discord 링크 라벨 설정
+        self.discordLink = QLabel('<a href="https://discord.com/users/245702966085025802">Discord</a>', self)
+        self.discordLink.setOpenExternalLinks(True)
+
+        # linksLayout에 위젯 추가하고, 스트레치를 이용하여 양 끝으로 링크를 배치
+        linksLayout.addWidget(self.usageLink)
+        linksLayout.addStretch(1)
+        linksLayout.addWidget(self.discordLink)
+
+        # 메인 레이아웃에 링크 레이아웃을 추가
+        layout.addLayout(linksLayout)
 
         self.setLayout(layout)
         self.setWindowTitle('치지직 VOD 다운로더')
         self.setGeometry(300, 300, 300, 150)
+    def showReadMe(self, link):
+        readMeText = """1. VOD URL을 입력하세요.
+        
+2. 만약 연령 제한 VOD일 경우 NID_AUT, NID_SES 쿠키 값을 입력하세요.
+
+3. 다운로드 버튼을 클릭하세요.
+
+4. 일시정지/정지 버튼을 사용하여 다운로드를 일시정지/정지할 수 있습니다."""
+        QMessageBox.information(self, "사용법", readMeText)
 
     def onDownload(self):
         link = self.urlInput.text()

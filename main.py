@@ -5,6 +5,8 @@ from streamlink import Streamlink
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
 import ctypes
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
 
 ctypes.windll.kernel32.SetConsoleTitleW("CHZZK VOD Downloader")
 
@@ -29,25 +31,38 @@ class ChzzkStreamExtractor:
 
     @staticmethod
     def download_video(video_url, output_path):
-        try:
-            response = requests.get(video_url, stream=True)
-            response.raise_for_status()
+        # 세션 생성
+        session = requests.Session()
 
-            total_size = int(response.headers.get('content-length', 0))
-            block_size = 8192
-            progress_bar = tqdm(total=total_size, unit='B', unit_scale=True)
+        # 파일 크기를 얻기 위한 초기 요청
+        with session.get(video_url, stream=True) as r:
+            r.raise_for_status()
+            total_size = int(r.headers.get('content-length', 0))
 
-            with open(output_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=block_size):
-                    if chunk:
-                        f.write(chunk)
-                        progress_bar.update(len(chunk))
+        part_size = 1024 * 1024 * 10
+        parts = total_size // part_size + (1 if total_size % part_size else 0)
 
-            progress_bar.close()  # Close tqdm when done
-            print("Download completed!\n")
+        tqdm_bar = tqdm(total=total_size, unit='B', unit_scale=True, desc="Downloading")
 
-        except requests.RequestException as e:
-            print("Failed to download video:", str(e), "\n")
+        def download_part(part):
+            start = part * part_size
+            end = start + part_size - 1 if (start + part_size - 1) < total_size else total_size
+            headers = {'Range': f'bytes={start}-{end}'}
+            with session.get(video_url, headers=headers, stream=True) as r:
+                r.raise_for_status()
+                return r.content
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_part = {executor.submit(download_part, part): part for part in range(parts)}
+
+            for future in as_completed(future_to_part):
+                part_data = future.result()
+                tqdm_bar.update(len(part_data))
+                with open(output_path, 'ab') as file:
+                    file.write(part_data)
+
+        tqdm_bar.close()
+        print("Download completed!\n")
 
     @staticmethod
     def _print_dash_manifest(video_url):
