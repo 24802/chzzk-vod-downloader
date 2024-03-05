@@ -89,8 +89,9 @@ class ChzzkStreamExtractor:
     def _get_vod_streams(session, video_no):
         api_url = ChzzkStreamExtractor.VOD_INFO.format(video_no=video_no)
 
+        UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
         try:
-            response = requests.get(api_url)
+            response = requests.get(api_url, headers={"User-Agent": UserAgent})
             response.raise_for_status()
         except requests.RequestException as e:
             print("Failed to fetch video information:", str(e), "\n")
@@ -111,7 +112,7 @@ class ChzzkStreamExtractor:
                 cookies = ChzzkStreamExtractor._load_cookies_from_file("cookies.json")
                 if cookies is not None:
                     # Retry the request with cookies
-                    response = requests.get(api_url, cookies=cookies)
+                    response = requests.get(api_url, cookies=cookies, headers={"User-Agent": UserAgent})
                     response.raise_for_status()
 
                     # Update video_id and in_key with the new values

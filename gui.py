@@ -131,9 +131,9 @@ class ChzzkStreamExtractor:
     @staticmethod
     def _get_vod_streams(session, video_no, cookies):
         api_url = ChzzkStreamExtractor.VOD_INFO.format(video_no=video_no)
-
+        UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
         try:
-            response = requests.get(api_url)
+            response = requests.get(api_url, headers={"User-Agent": UserAgent})
             response.raise_for_status()
         except requests.RequestException as e:
             QMessageBox.critical(None, "Error", f"비디오 정보를 가져오는데 실패했습니다:\n{e}")
@@ -150,7 +150,7 @@ class ChzzkStreamExtractor:
 
             if video_id is None or in_key is None and cookies:
                 # 쿠키를 사용하여 재요청
-                response = requests.get(api_url, cookies=cookies)
+                response = requests.get(api_url, cookies=cookies, headers={"User-Agent": UserAgent})
                 response.raise_for_status()
 
                 content = response.json().get('content', {})
